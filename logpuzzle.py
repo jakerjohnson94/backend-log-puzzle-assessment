@@ -21,6 +21,7 @@ import re
 import sys
 import urllib
 import argparse
+import re
 
 
 def read_urls(filename):
@@ -28,8 +29,15 @@ def read_urls(filename):
     extracting the hostname from the filename itself.
     Screens out duplicate urls and returns the urls sorted into
     increasing order."""
-    # +++your code here+++
-    pass
+    regex = r"GET.(\S*puzzle\S*)"
+    result = []
+    with open(filename) as file:
+        url_list = file.readlines()
+    for line in url_list:
+        m = re.search(regex, line)
+        if m:
+            result.append(m.group(1))
+    return result
 
 
 def download_images(img_urls, dest_dir):
@@ -47,7 +55,8 @@ def download_images(img_urls, dest_dir):
 def create_parser():
     """Create an argument parser object"""
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--todir',  help='destination directory for downloaded images')
+    parser.add_argument(
+        '-d', '--todir',  help='destination directory for downloaded images')
     parser.add_argument('logfile', help='apache logfile to extract urls from')
 
     return parser
