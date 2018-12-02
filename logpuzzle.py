@@ -9,11 +9,6 @@ http://www.apache.org/licenses/LICENSE-2.0
 Google's Python Class
 http://code.google.com/edu/languages/google-python-class/
 
-Given an apache logfile, find the puzzle urls and download the images.
-
-Here's what a puzzle url looks like:
-10.254.254.28 - - [06/Aug/2007:00:13:48 -0700] "GET /~foo/puzzle-bar-aaab.jpg HTTP/1.0" 302 528 "-" "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.6) Gecko/20070725 Firefox/2.0.0.6"
-
 """
 
 import os
@@ -23,21 +18,51 @@ import urllib
 import argparse
 import re
 
+index_template = '''
+<html>
+<body>
+    <div>
+    {}
+    </div>
+</body>
+</html>
+'''
+
+
+def read_file(filename):
+    with open(filename) as file:
+        data = file.read()
+    return data
+
+
+def parse_sorting_key(pat, txt):
+    """sorting key helper function. Return regex match if possible
+     or the original value"""
+    r = re.search(pat, txt)
+    return r.group(1) if r else txt
+
+
+def create_img_tags(dest_dir):
+    """Create string of HTML img tags from images in destination directory"""
+    tags = []
+    for img in sorted(os.listdir(dest_dir)):
+        if img.endswith('.jpg'):
+            tag = '<img src="{}" style="float: left">'.format(img)
+            tags.append(tag)
+    return '\n    '.join(tags)
+
 
 def read_urls(filename):
     """Returns a list of the puzzle urls from the given log file,
     extracting the hostname from the filename itself.
     Screens out duplicate urls and returns the urls sorted into
     increasing order."""
-    regex = r"GET.(\S*puzzle\S*)"
-    result = []
-    with open(filename) as file:
-        url_list = file.readlines()
-    for line in url_list:
-        m = re.search(regex, line)
-        if m:
-            result.append(m.group(1))
-    return result
+    url_regex = r"GET.(\S*puzzle\S*)"
+    sorting_regex = r'puzzle/\S-\S*-(\S*)\.jpg'
+    data = read_file(filename)
+    urls = set(['http://code.google.com' +
+                m for m in re.findall(url_regex, data)])
+    return sorted(urls, key=lambda x: parse_sorting_key(sorting_regex, x))
 
 
 def download_images(img_urls, dest_dir):
@@ -48,8 +73,21 @@ def download_images(img_urls, dest_dir):
     with an img tag to show each local image file.
     Creates the directory if necessary.
     """
-    # +++your code here+++
-    pass
+    if dest_dir not in os.listdir('.'):
+        os.mkdir('./'+dest_dir)
+
+    for i, img in enumerate(img_urls):
+        print('downloading... ' + img)
+        padding = '00' if i < 10 else '0' if i < 100 else ''
+        urllib.urlretrieve(
+            img, filename='./{}/img{}{}.jpg'.format(dest_dir, padding, str(i)))
+    print('All Files Downloaded.')
+
+    img_tags = create_img_tags(dest_dir)
+
+    with open(dest_dir+'/index.html', 'w') as f:
+        f.write(index_template.format((img_tags)))
+        print('Wrote index.html in ./{}'.format(dest_dir))
 
 
 def create_parser():
